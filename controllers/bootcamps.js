@@ -1,3 +1,4 @@
+const path = require("path");
 const Bootcamp = require("../models/Bootcamp");
 const ErrorResponse = require("../utils/errorResponse");
 const geocoder = require("../utils/geocoder");
@@ -7,53 +8,11 @@ const asyncHandler = require("../middleware/async");
 //@route    GET /api/v1/bootcamps
 //@access   Public
 exports.getBootCamps = asyncHandler(async (req, res, next) => {
-  let { select, sort, page, limit, ...query } = req.query;
-  query = JSON.parse(
-    JSON.stringify(query).replace(
-      /\b(gt|lt|gte|lte|ne|in)\b/g,
-      (match) => `$${match}`
-    )
-  );
-  select = select && select.replace(/,/g, " ");
-  sort = sort ? sort.replace(/,/g, " ") : "-createdAt";
-  page = page ? parseInt(page.replace(/,/g, " "), 10) : 1;
-  limit = limit ? parseInt(limit.replace(/,/g, " "), 10) : 25;
-  const startIndex = (page - 1) * limit;
-  const endIndex = page * limit;
-  const total = await Bootcamp.countDocuments();
-
-  const pagination = {};
-
-  if (endIndex < total) {
-    pagination.next = {
-      page: page + 1,
-      limit,
-    };
-  }
-
-  if (startIndex > 0) {
-    pagination.prev = {
-      page: page - 1,
-      limit,
-    };
-  }
-
-  const bootcamps = await Bootcamp.find(query, select, {
-    sort,
-    skip: startIndex,
-    limit: limit,
-  }).populate("courses");
-
-  res.status(201).json({
-    success: true,
-    count: bootcamps.length,
-    data: bootcamps,
-    pagination,
-  });
+  res.status(201).json(res.advancedResult);
 });
 
 //@desc     Get Single Bootcamp
-//@route    GET /api/v1/bootcamp/:id
+//@route    GET /api/v1/bootcamps/:id
 //@access   Private
 exports.getBootCamp = asyncHandler(async (req, res, next) => {
   const bootcamp = await Bootcamp.findById(req.params.id);
@@ -66,7 +25,7 @@ exports.getBootCamp = asyncHandler(async (req, res, next) => {
 });
 
 //@desc     Create Bootcamp
-//@route    POST /api/v1/bootcamp/:id
+//@route    POST /api/v1/bootcamps/:id
 //@access   Private
 exports.createBootCamp = asyncHandler(async (req, res, next) => {
   const bootcamp = await Bootcamp.create(req.body);
@@ -77,7 +36,7 @@ exports.createBootCamp = asyncHandler(async (req, res, next) => {
 });
 
 //@desc     Update Bootcamp
-//@route    PUT /api/v1/bootcamp/:id
+//@route    PUT /api/v1/bootcamps/:id
 //@access   Private
 exports.updateBootCamp = asyncHandler(async (req, res, next) => {
   const bootcamp = await Bootcamp.findByIdAndUpdate(req.params.id, req.body, {
@@ -93,7 +52,7 @@ exports.updateBootCamp = asyncHandler(async (req, res, next) => {
 });
 
 //@desc     Delete Bootcamp
-//@route    DELETE /api/v1/bootcamp/:id
+//@route    DELETE /api/v1/bootcamps/:id
 //@access   Private
 exports.deleteBootCamp = asyncHandler(async (req, res, next) => {
   const bootcamp = await Bootcamp.findById(req.params.id);
@@ -107,7 +66,7 @@ exports.deleteBootCamp = asyncHandler(async (req, res, next) => {
 });
 
 //@desc     Get Bootcamp within a radius
-//@route    GET /api/v1/bootcamp/radius/:zipcode/:distance
+//@route    GET /api/v1/bootcamps/radius/:zipcode/:distance
 //@access   Private
 exports.getBootCampsInRedius = asyncHandler(async (req, res, next) => {
   const { zipcode, distance } = req.params;
@@ -126,5 +85,55 @@ exports.getBootCampsInRedius = asyncHandler(async (req, res, next) => {
     success: true,
     count: bootcamps.length,
     data: bootcamps,
+  });
+});
+
+//@desc     Upload Bootcamp Photo
+//@route    PUT /api/v1/bootcamps/:id/photo
+//@access   Private
+exports.bootcampPhotoUpload = asyncHandler(async (req, res, next) => {
+  const bootcamp = await Bootcamp.findById(req.params.id);
+
+  if (!bootcamp) {
+    return next(
+      new ErrorResponse(`Bootcamp not found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  if (!req.files) {
+    return next(new ErrorResponse(`Please Upload a Photo`, 400));
+  }
+
+  const file = req.files.file;
+
+  if (!file.mimetype.startsWith("image")) {
+    return next(new ErrorResponse(`Please Upload an image file`, 400));
+  }
+
+  if (file.size > process.env.MAX_FILE_UPLOAD) {
+    return next(
+      new ErrorResponse(
+        `Please Upload an image less than ${process.env.MAX_FILE_UPLOAD}`,
+        400
+      )
+    );
+  }
+
+  file.name = `photo_${bootcamp._id}${path.parse(file.name).ext}`;
+
+  file.mv(`${process.env.FILE_UPLOAD_PATH}/${file.name}`, async (err) => {
+    if (err) {
+      console.log(err);
+      return next(new ErrorResponse("Problem with file upload", 500));
+    }
+
+    await Bootcamp.findByIdAndUpdate(req.params.id, {
+      photo: file.name,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: file.name,
+    });
   });
 });

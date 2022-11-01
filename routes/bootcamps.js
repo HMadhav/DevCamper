@@ -8,9 +8,17 @@ const {
   updateBootCamp,
   deleteBootCamp,
   getBootCampsInRedius,
+  bootcampPhotoUpload,
 } = require("../controllers/bootcamps");
 
-router.route("/").get(getBootCamps).post(createBootCamp);
+const Bootcamp = require("../models/Bootcamp");
+const advancedResult = require("../middleware/advancedResult");
+
+router
+  .route("/")
+  .get(advancedResult(Bootcamp, "courses"), getBootCamps)
+  .post(createBootCamp);
+router.route("/:id/photo").put(bootcampPhotoUpload);
 router
   .route("/:id")
   .get(getBootCamp)
