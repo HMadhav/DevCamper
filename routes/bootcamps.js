@@ -11,19 +11,23 @@ const {
   bootcampPhotoUpload,
 } = require("../controllers/bootcamps");
 
+const { protect, authorize } = require("../middleware/auth");
+
 const Bootcamp = require("../models/Bootcamp");
 const advancedResult = require("../middleware/advancedResult");
 
 router
   .route("/")
   .get(advancedResult(Bootcamp, "courses"), getBootCamps)
-  .post(createBootCamp);
-router.route("/:id/photo").put(bootcampPhotoUpload);
+  .post(protect, authorize("publisher", "admin"), createBootCamp);
+router
+  .route("/:id/photo")
+  .put(protect, authorize("publisher", "admin"), bootcampPhotoUpload);
 router
   .route("/:id")
   .get(getBootCamp)
-  .put(updateBootCamp)
-  .delete(deleteBootCamp);
+  .put(protect, authorize("publisher", "admin"), updateBootCamp)
+  .delete(protect, authorize("publisher", "admin"), deleteBootCamp);
 router.route("/radius/:zipcode/:distance").get(getBootCampsInRedius);
 
 //Include other resource router
