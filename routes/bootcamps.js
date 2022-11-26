@@ -1,5 +1,6 @@
 const express = require("express");
 const courseRouter = require("./courses");
+const reviewRouter = require("./reviews");
 const router = express.Router();
 const {
   getBootCamps,
@@ -32,5 +33,6 @@ router.route("/radius/:zipcode/:distance").get(getBootCampsInRedius);
 
 //Include other resource router
 router.use("/:bootcampId/courses", courseRouter);
+router.use("/:bootcampId/reviews", reviewRouter);
 
 module.exports = router;
