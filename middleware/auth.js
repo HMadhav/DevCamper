@@ -10,12 +10,17 @@ exports.protect = asyncHandler(async (req, res, next) => {
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")
   ) {
+    //Set Token with header
     token = req.headers.authorization.split(" ")[1];
   }
+  //Set Token with cookies
+  // else if (req.cookies.token) {
+  //   token = req.cookies.token;
+  // }
 
   //Make Sure Token Exists
   if (!token) {
-    return next(new ErrorResponse("Not Authorize to access this route", 401));
+    return next(new ErrorResponse("Not Authorized to access this route", 401));
   }
 
   try {
@@ -24,7 +29,7 @@ exports.protect = asyncHandler(async (req, res, next) => {
     req.user = await User.findById(decoded.id);
     next();
   } catch (error) {
-    return next(new ErrorResponse("Not Authorize to access this route", 401));
+    return next(new ErrorResponse("Not Authorized to access this route", 401));
   }
 });
 
@@ -34,7 +39,7 @@ exports.authorize =
     if (!roles.includes(req.user.role)) {
       return next(
         new ErrorResponse(
-          `User role ${req.user.role} not authorize to access this route`,
+          `User role ${req.user.role} not authorized to access this route`,
           403
         )
       );
